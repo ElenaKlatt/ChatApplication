@@ -225,7 +225,8 @@ function getRandomRolor() {
 }
 
 // listen to port
-	http.listen('3000', function() {
+	let port = process.env.PORT || process.env.VCAP_APP_PORT || 3000;
+	http.listen(port, function() {
 //	http.listen(appEnv.port, appEnv.bind, function() { 
     console.log("server starting on " + appEnv.url)
 })
