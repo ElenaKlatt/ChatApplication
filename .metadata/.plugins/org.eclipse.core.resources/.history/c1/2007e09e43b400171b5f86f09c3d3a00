@@ -1,0 +1,99 @@
+var app = require('express')();
+var bodyParser = require("body-parser");
+var users = [];
+var sockets = {};
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+app.engine('.html', require('ejs').__express);
+app.set('view engine', 'html')
+
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+
+app.get('/', function(req, res){
+  res.sendFile(__dirname + '/index.html');
+});
+
+app.get('/chatroom.html', function(req, res){
+	  res.sendFile(__dirname + '/index.html');
+});
+
+app.post('/chatroom.html', function (req, res) {
+	var uname = req.body.uname;
+	var msg = {
+	    	'message': "is connected",
+	    	'timestamp': Date.now(),
+	    	'username': uname,
+	    	'color' : 'grey'
+	      }
+	
+	io.sockets.emit('chat message',msg);
+	res.render("pages/chatroom", {
+        username: uname
+    });
+});
+
+
+app.get('/css/style.css', function(req, res){
+  res.sendFile(__dirname + '/css/style.css');
+});
+app.get('/js/main.js', function(req, res){
+  res.sendFile(__dirname + '/js/main.js');
+});
+
+
+io.on('connection', function(socket){
+	 console.log("user connected");
+	 sockets[socket.id] = socket; 
+	 
+	 socket.on('addUser', function (data) {
+		 console.log("Benutzer hinzugefuegt "+data);
+		 socket.username = data;
+		 socket.color = getRandomRolor();
+		 users.push(socket.username);
+	 });
+	 
+	 socket.on('disconnect', function(){
+		
+			var msg = {
+			    	'message': "is disconnected",
+			    	'timestamp': Date.now(),
+			    	'username': socket.username,
+			    	'color' : 'grey'
+			      }
+	    console.log('user disconnected');
+	    io.emit('chat message', msg);
+	    
+	    var index = users.indexOf(socket.username);
+	    if (index > -1) {
+	    	users.splice(index, 1);
+	    } 	 
+	  });
+	
+	  socket.on('chat message', function(msg){
+		  if(msg.message == "/list"){
+			  io.emit('chat message', users.length);
+		  }	
+		  msg.socketId = socket.id 
+		  msg.color = socket.color;
+		  
+	      io.emit('chat message',msg);
+	  });
+	  
+});
+//Start the Server
+http.listen(3000, function(){
+  console.log('listening on *:3000');
+});
+
+function getRandomRolor() {
+    var letters = '0123456789'.split('');
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+        color += letters[Math.round(Math.random() * 10)];
+    }
+    return color;
+}
+
